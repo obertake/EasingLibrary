@@ -105,3 +105,155 @@ UCurveFloat* UCurveOpsLibrary::DuplicateAndInvertCurve(
     NewCurve->GetOutermost()->SetDirtyFlag(true);
     return NewCurve;
 }
+
+bool UCurveOpsLibrary::CreateEaseVariantsFromEaseIn(
+    UCurveFloat* EaseInCurve,
+    UCurveFloat*& OutEaseOutCurve,
+    UCurveFloat*& OutEaseInOutCurve,
+    UCurveFloat*& OutEaseOutInCurve,
+    const FString& EaseOutSuffix,
+    const FString& EaseInOutSuffix,
+    const FString& EaseOutInSuffix)
+{
+    OutEaseOutCurve = nullptr;
+    OutEaseInOutCurve = nullptr;
+    OutEaseOutInCurve = nullptr;
+
+    if (!EaseInCurve)
+    {
+        return false;
+    }
+
+    float MinTime = 0.0f;
+    float MaxTime = 0.0f;
+    EaseInCurve->GetTimeRange(MinTime, MaxTime);
+    const float Range = MaxTime - MinTime;
+    if (Range <= KINDA_SMALL_NUMBER)
+    {
+        return false;
+    }
+
+    OutEaseOutCurve = DuplicateAndInvertCurve(EaseInCurve, /*bInvertValue*/ false, /*bInvertTime*/ true, EaseOutSuffix);
+    if (!OutEaseOutCurve)
+    {
+        return false;
+    }
+
+    const FString SourcePackageName = EaseInCurve->GetOutermost()->GetName();
+    const FString SourcePath = FPackageName::GetLongPackagePath(SourcePackageName);
+
+    FAssetToolsModule& AssetToolsModule = FAssetToolsModule::GetModule();
+
+    auto DuplicateForEditing = [&](const FString& Suffix) -> UCurveFloat*
+    {
+        UObject* NewObject = AssetToolsModule.Get().DuplicateAsset(EaseInCurve->GetName() + Suffix, SourcePath, EaseInCurve);
+        return Cast<UCurveFloat>(NewObject);
+    };
+
+    const FRichCurve& EaseInData = EaseInCurve->FloatCurve;
+    const TArray<FRichCurveKey>& EaseInKeys = EaseInData.GetConstRefOfKeys();
+    const int32 NumEaseInKeys = EaseInKeys.Num();
+
+    const FRichCurve& EaseOutData = OutEaseOutCurve->FloatCurve;
+    const TArray<FRichCurveKey>& EaseOutKeys = EaseOutData.GetConstRefOfKeys();
+    const int32 NumEaseOutKeys = EaseOutKeys.Num();
+
+    float EaseOutMinTime = 0.0f;
+    float EaseOutMaxTime = 0.0f;
+    OutEaseOutCurve->GetTimeRange(EaseOutMinTime, EaseOutMaxTime);
+
+    auto CopyKeyWithTransform = [](FRichCurve& DestCurve, const FRichCurveKey& SourceKey, float SourceMinTime, float TimeScale, float TimeOffset, float ValueScale, float ValueOffset) -> FKeyHandle
+    {
+        const float NewTime = TimeOffset + (SourceKey.Time - SourceMinTime) * TimeScale;
+        const float NewValue = ValueOffset + ValueScale * SourceKey.Value;
+
+        const FKeyHandle Handle = DestCurve.AddKey(NewTime, NewValue);
+        DestCurve.SetKeyInterpMode(Handle, SourceKey.InterpMode);
+        DestCurve.SetKeyTangentMode(Handle, SourceKey.TangentMode);
+
+        FRichCurveKey& DestKey = DestCurve.GetKey(Handle);
+        const float TangentScale = (FMath::Abs(TimeScale) > KINDA_SMALL_NUMBER) ? (ValueScale / TimeScale) : 0.0f;
+        DestKey.ArriveTangent = SourceKey.ArriveTangent * TangentScale;
+        DestKey.LeaveTangent = SourceKey.LeaveTangent * TangentScale;
+
+#if (ENGINE_MAJOR_VERSION == 4) && (ENGINE_MINOR_VERSION >= 26)
+        DestKey.TangentWeightMode = SourceKey.TangentWeightMode;
+        DestKey.ArriveTangentWeight = SourceKey.ArriveTangentWeight * FMath::Abs(TimeScale);
+        DestKey.LeaveTangentWeight = SourceKey.LeaveTangentWeight * FMath::Abs(TimeScale);
+#endif
+
+        return Handle;
+    };
+
+    OutEaseInOutCurve = DuplicateForEditing(EaseInOutSuffix);
+    if (!OutEaseInOutCurve)
+    {
+        return false;
+    }
+
+    {
+        FRichCurve& TargetCurve = OutEaseInOutCurve->FloatCurve;
+        TargetCurve.Reset();
+
+        if (NumEaseInKeys > 0)
+        {
+            for (int32 KeyIndex = 0; KeyIndex < NumEaseInKeys; ++KeyIndex)
+            {
+                CopyKeyWithTransform(TargetCurve, EaseInKeys[KeyIndex], MinTime, 0.5f, MinTime, 0.5f, 0.0f);
+            }
+        }
+
+        for (int32 KeyIndex = 0; KeyIndex < NumEaseOutKeys; ++KeyIndex)
+        {
+            if (KeyIndex == 0 && TargetCurve.GetNumKeys() > 0)
+            {
+                continue;
+            }
+
+            CopyKeyWithTransform(TargetCurve, EaseOutKeys[KeyIndex], EaseOutMinTime, 0.5f, MinTime + Range * 0.5f, 0.5f, 0.5f);
+        }
+
+        TargetCurve.AutoSetTangents();
+
+        FAssetRegistryModule::AssetCreated(OutEaseInOutCurve);
+        OutEaseInOutCurve->MarkPackageDirty();
+        OutEaseInOutCurve->GetOutermost()->SetDirtyFlag(true);
+    }
+
+    OutEaseOutInCurve = DuplicateForEditing(EaseOutInSuffix);
+    if (!OutEaseOutInCurve)
+    {
+        return false;
+    }
+
+    {
+        FRichCurve& TargetCurve = OutEaseOutInCurve->FloatCurve;
+        TargetCurve.Reset();
+
+        if (NumEaseOutKeys > 0)
+        {
+            for (int32 KeyIndex = 0; KeyIndex < NumEaseOutKeys; ++KeyIndex)
+            {
+                CopyKeyWithTransform(TargetCurve, EaseOutKeys[KeyIndex], EaseOutMinTime, 0.5f, MinTime, 0.5f, 0.0f);
+            }
+        }
+
+        for (int32 KeyIndex = 0; KeyIndex < NumEaseInKeys; ++KeyIndex)
+        {
+            if (KeyIndex == 0 && TargetCurve.GetNumKeys() > 0)
+            {
+                continue;
+            }
+
+            CopyKeyWithTransform(TargetCurve, EaseInKeys[KeyIndex], MinTime, 0.5f, MinTime + Range * 0.5f, 0.5f, 0.5f);
+        }
+
+        TargetCurve.AutoSetTangents();
+
+        FAssetRegistryModule::AssetCreated(OutEaseOutInCurve);
+        OutEaseOutInCurve->MarkPackageDirty();
+        OutEaseOutInCurve->GetOutermost()->SetDirtyFlag(true);
+    }
+
+    return true;
+}
