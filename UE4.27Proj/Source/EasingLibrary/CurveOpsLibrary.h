@@ -14,14 +14,16 @@ public:
     UFUNCTION(BlueprintCallable, CallInEditor, Category = "CurveOps")
     static UCurveFloat* DuplicateAndInvertCurve(UCurveFloat* SourceCurve, bool bInvertValue, bool bInvertTime, const FString& Suffix = TEXT("_Inverted"));
 
-    /** Creates EaseOut, EaseInOut, and EaseOutIn variants next to the supplied ease-in curve asset. */
+    /** Creates EaseIn, EaseOut, EaseInOut, and EaseOutIn variants next to the supplied ease-in curve asset. */
     UFUNCTION(BlueprintCallable, CallInEditor, Category = "CurveOps")
     static bool CreateEaseVariantsFromEaseIn(
         UCurveFloat* EaseInCurve,
+        UPARAM(ref) UCurveFloat*& OutEaseInCurve,
         UPARAM(ref) UCurveFloat*& OutEaseOutCurve,
         UPARAM(ref) UCurveFloat*& OutEaseInOutCurve,
         UPARAM(ref) UCurveFloat*& OutEaseOutInCurve,
-        const FString& EaseOutSuffix = TEXT("_EaseOut"),
-        const FString& EaseInOutSuffix = TEXT("_EaseInOut"),
-        const FString& EaseOutInSuffix = TEXT("_EaseOutIn"));
+        const FString& EaseInSuffix = TEXT("_In"),
+        const FString& EaseOutSuffix = TEXT("_Out"),
+        const FString& EaseInOutSuffix = TEXT("_InOut"),
+        const FString& EaseOutInSuffix = TEXT("_OutIn"));
 };

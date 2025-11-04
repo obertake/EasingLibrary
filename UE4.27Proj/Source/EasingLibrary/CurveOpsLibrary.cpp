@@ -112,13 +112,16 @@ UCurveFloat* UCurveOpsLibrary::DuplicateAndInvertCurve(
 
 bool UCurveOpsLibrary::CreateEaseVariantsFromEaseIn(
     UCurveFloat* EaseInCurve,
+    UCurveFloat*& OutEaseInCurve,
     UCurveFloat*& OutEaseOutCurve,
     UCurveFloat*& OutEaseInOutCurve,
     UCurveFloat*& OutEaseOutInCurve,
+    const FString& EaseInSuffix,
     const FString& EaseOutSuffix,
     const FString& EaseInOutSuffix,
     const FString& EaseOutInSuffix)
 {
+    OutEaseInCurve = nullptr;
     OutEaseOutCurve = nullptr;
     OutEaseInOutCurve = nullptr;
     OutEaseOutInCurve = nullptr;
@@ -153,6 +156,15 @@ bool UCurveOpsLibrary::CreateEaseVariantsFromEaseIn(
         UObject* NewObject = AssetToolsModule.Get().DuplicateAsset(EaseInCurve->GetName() + Suffix, SourcePath, EaseInCurve);
         return Cast<UCurveFloat>(NewObject);
     };
+
+    OutEaseInCurve = DuplicateForEditing(EaseInSuffix);
+    if (!OutEaseInCurve)
+    {
+        return false;
+    }
+    FAssetRegistryModule::AssetCreated(OutEaseInCurve);
+    OutEaseInCurve->MarkPackageDirty();
+    OutEaseInCurve->GetOutermost()->SetDirtyFlag(true);
 
     const FRichCurve& EaseInData = EaseInCurve->FloatCurve;
     const TArray<FRichCurveKey>& EaseInKeys = EaseInData.GetConstRefOfKeys();
