@@ -63,17 +63,21 @@ UCurveFloat* UCurveOpsLibrary::DuplicateAndInvertCurve(
         Dst.SetKeyTangentMode(Handle, K.TangentMode);
 
         // Compute flipped tangents
-        float ArriveTangent = K.ArriveTangent;
-        float LeaveTangent = K.LeaveTangent;
-
-        // Vertical flip reverses the slope (multiply by -1)
+        // Adjust tangents using the derivative transform: dV'/dT' = (ValueScale / TimeScale) * dV/dT
+        float TangentScale = 1.0f;
         if (bInvertValue)
         {
-            ArriveTangent = -ArriveTangent;
-            LeaveTangent = -LeaveTangent;
+            TangentScale *= -1.0f;
+        }
+        if (bInvertTime)
+        {
+            TangentScale *= -1.0f;
         }
 
-        // Horizontal flip swaps them (the "left" side becomes the "right")
+        float ArriveTangent = K.ArriveTangent * TangentScale;
+        float LeaveTangent = K.LeaveTangent * TangentScale;
+
+        // Horizontal flip swaps them so the "left" tangent becomes the "right"
         if (bInvertTime)
         {
             Swap(ArriveTangent, LeaveTangent);
@@ -133,7 +137,7 @@ bool UCurveOpsLibrary::CreateEaseVariantsFromEaseIn(
         return false;
     }
 
-    OutEaseOutCurve = DuplicateAndInvertCurve(EaseInCurve, /*bInvertValue*/ false, /*bInvertTime*/ true, EaseOutSuffix);
+    OutEaseOutCurve = DuplicateAndInvertCurve(EaseInCurve, /*bInvertValue*/ true, /*bInvertTime*/ true, EaseOutSuffix);
     if (!OutEaseOutCurve)
     {
         return false;
