@@ -90,14 +90,35 @@ UCurveFloat* UCurveOpsLibrary::DuplicateAndInvertCurve(
 
         // Tangent weights exist in 4.26+; guard if you need to support earlier 4.x
 #if (ENGINE_MAJOR_VERSION == 4) && (ENGINE_MINOR_VERSION >= 26)
-        OutKey.TangentWeightMode = K.TangentWeightMode;
-        OutKey.ArriveTangentWeight = K.ArriveTangentWeight;
-        OutKey.LeaveTangentWeight = K.LeaveTangentWeight;
+        ERichCurveTangentWeightMode TangentWeightMode = K.TangentWeightMode;
+        float ArriveTangentWeight = K.ArriveTangentWeight;
+        float LeaveTangentWeight = K.LeaveTangentWeight;
+
+        if (bInvertTime)
+        {
+            Swap(ArriveTangentWeight, LeaveTangentWeight);
+
+            switch (TangentWeightMode)
+            {
+                case RCTWM_WeightedArrive:
+                    TangentWeightMode = RCTWM_WeightedLeave;
+                    break;
+                case RCTWM_WeightedLeave:
+                    TangentWeightMode = RCTWM_WeightedArrive;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        OutKey.TangentWeightMode = TangentWeightMode;
+        OutKey.ArriveTangentWeight = ArriveTangentWeight;
+        OutKey.LeaveTangentWeight = LeaveTangentWeight;
 #elif
 
         // Older 4.x fallback
-        Dst.SetKeyArriveTangent(Handle, K.ArriveTangent);
-        Dst.SetKeyLeaveTangent(Handle, K.LeaveTangent);
+        Dst.SetKeyArriveTangent(Handle, ArriveTangent);
+        Dst.SetKeyLeaveTangent(Handle, LeaveTangent);
 #endif
     }
 
