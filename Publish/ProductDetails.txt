@@ -1,0 +1,62 @@
+Zip LINK:
+v1.0
+https://drive.google.com/file/d/1bHcgw620LmI-Xczc4YWvib5heFjx_WGN/view?usp=sharing
+
+PRODUCT TITLE:
+Ultimate Easing Curves Library
+
+DESCRIPTION:
+40 Pro-Grade Easing Curves for Animation
+A library of smooth, production-ready motion curves for Unreal Engine
+Each curve is optimized and normalized to a (1,1) range for consistent scaling
+Perfect for UI, gameplay, and cinematic animation
+Create natural motion, and effortless integration into any workflow.
+
+Product type:
+Animations
+
+CATEGORY:
+Variety
+
+
+TAGS:
+(25 tags max)
+animation
+curved
+motion
+stopmotion
+transition
+interactive
+time
+timeframe
+cinematic
+procedural
+key
+ultimate
+library
+pack
+widget
+toolkit
+visualeffect
+soundeffect
+effect
+flow
+dynamic
+userinterface
+multiplayer
+smooth
+natural
+
+
+
+
+Technical details:
+
+Number of Curves: 41
+
+Supported Development Platforms:
+Windows: Yes
+Mac: Yes
+
+
+
